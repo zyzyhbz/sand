@@ -1,0 +1,53 @@
+# 依赖
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 上传文件
+uploads/
+!uploads/.gitkeep
+
+# 生成的报告
+reports/
+!reports/.gitkeep
+
+# 日志
+logs/
+*.log
+
+# 临时文件
+tmp/
+temp/
+TMP_*.js
+*.tmp
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 测试
+coverage/
+.nyc_output/
+
+# 构建输出
+dist/
+build/
+
+# 数据库
+database/*.db
+database/*.db-journal

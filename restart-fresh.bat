@@ -1,0 +1,9 @@
+@echo off
+echo 确保使用最新的AI报告服务代码...
+echo.
+echo 重置Node.js模块缓存...
+node -e "Object.keys(require.cache)._keys.forEach(k => delete require.cache[k])"
+echo.
+echo 启动服务器...
+node server.js
+pause

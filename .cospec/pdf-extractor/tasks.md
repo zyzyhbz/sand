@@ -1,0 +1,108 @@
+# 任务清单 - PDF文本提取模块
+
+- [x] 1. 实现【工具层utils.py】功能 - 配置管理、哈希计算、数据转换、输出格式化
+  - 实现DEFAULT_CONFIG默认配置字典，包含primary_extractor、fallback_extractors、ocr、performance、ai_integration全部配置项及默认值
+  - 实现merge_config(base, override)函数，将外部传入配置与默认配置深度合并，返回最终生效配置
+  - 实现compute_hash(data)函数，对bytes数据计算SHA256哈希值并返回十六进制字符串
+  - 实现decode_base64(data)函数，将base64编码字符串解码为bytes，处理无效输入时返回None
+  - 实现assess_text_quality(text)函数，评估文本质量，返回包含has_scanned_pages、extraction_confidence、needs_human_review的字典
+  - 实现compute_statistics(text, page_count, elapsed_ms, method)函数，计算字数、页数、耗时、方法等统计信息
+  - 实现format_extraction_result(text, metadata, method, page_count, elapsed_ms)函数，组装统一输出结构（status/data/compatibility三层）
+  - 实现truncate_text(text, max_length)函数，超过最大长度时截断文本并返回(truncated_text, is_truncated)元组
+  - 确保子需求可独立运行
+  - _需求：[FR-004], [FR-008], [FR-010]_
+  - _测试：[compute_hash对相同bytes返回相同SHA256，format_extraction_result输出包含status/data/compatibility三层结构，merge_config外部配置覆盖默认值]_
+
+- [x] 2. 实现【OCR处理层ocr_handler.py】功能 - OCR文本提取处理
+  - 实现OCRHandler类__init__(config)构造函数，从配置中初始化languages、timeout、dpi参数
+  - 实现extract_text_with_ocr(pdf_data, max_pages)公开方法，将PDF转图片后逐页OCR识别，返回(text, page_count)元组
+  - 实现_pdf_to_images(pdf_data, max_pages)私有方法，使用pdf2image将PDF页面渲染为图片列表，受max_pages限制
+  - 实现_ocr_image(image)私有方法，使用pytesseract对单张图片执行OCR识别，应用配置的语言和超时参数
+  - 实现is_available()公开方法，检查pytesseract和pdf2image依赖是否可用，返回布尔值
+  - 确保子需求可独立运行
+  - _需求：[FR-003]_
+  - _测试：[extract_text_with_ocr对扫描件PDF返回非空文本，is_available检测OCR依赖环境]_
+
+- [x] 3. 实现【核心层core.py】功能 - PDFTextExtractor主提取编排与多策略降级
+  - 实现PDFTextExtractor类__init__(config)构造函数，调用merge_config合并配置，初始化内存缓存Dict和OCRHandler实例
+  - 实现extract(pdf_data, use_ocr, ocr_languages, max_pages)公开方法，处理输入数据类型判断（bytes/base64）、缓存检查、文件大小校验、提取流程编排、结果格式化、缓存存储
+  - 实现_run_extraction_chain(pdf_data, max_pages)私有方法，按优先级依次执行pdfplumber→PyPDF2→OCR策略链，首个有效结果即返回，记录method_used
+  - 实现_extract_with_pdfplumber(pdf_data)私有方法，使用pdfplumber逐页提取文本，异常时返回空结果
+  - 实现_extract_with_pypdf2(pdf_data)私有方法，使用PyPDF2逐页提取文本，异常时返回空结果
+  - 实现_extract_page_range(reader, start, end)私有方法，对PDF Reader对象按页码范围提取文本，每页提取后释放资源
+  - 实现_extract_parallel(pdf_data, page_count)私有方法，使用concurrent.futures.ThreadPoolExecutor并行提取多页，按页码排序合并结果
+  - 实现_check_cache(hash_key)和_store_cache(hash_key, result)私有方法，基于SHA256哈希键读写内存缓存
+  - 在extract方法中实现完整错误处理：PDF损坏返回status=error、加密返回提示、OCR超时返回status=partial、全部失败返回最后一次错误
+  - 确保子需求可独立运行
+  - _需求：[FR-001], [FR-002], [FR-006], [FR-007], [FR-008], [FR-009]_
+  - _测试：[extract对文本型PDF返回status=success及非空text，降级链pdfplumber失败后自动切换PyPDF2，缓存命中时返回与首次一致的结果]_
+
+- [x] 4. 实现【集成层integrations.py】功能 - PDFToAIBridge AI系统桥接
+  - 实现PDFToAIBridge类__init__(ai_model, config)构造函数，保存ai_model引用并创建PDFTextExtractor实例
+  - 实现_format_for_ai(extraction_result, attachment)私有方法，将统一格式提取结果转换为AI系统期望的输入结构（type/format/content/metadata/timestamp字段）
+  - 实现process_email_attachment(email_id, attachment)异步方法，从attachment获取PDF数据，调用extractor.extract提取文本，调用_format_for_ai格式化，传递给ai_model进行分析，返回AnalysisResult
+  - 确保子需求可独立运行
+  - _需求：[FR-005]_
+  - _测试：[process_email_attachment异步提取PDF文本并调用AI分析，_format_for_ai输出包含type/format/content/metadata/timestamp的AI输入结构]_
+
+- [x] 5. 实现【接口层__init__.py】功能 - 模块入口与公共API导出
+  - 创建pdf_extractor包目录及__init__.py文件
+  - 从core.py导入PDFTextExtractor类和extract_pdf_content函数（包装PDFTextExtractor.extract的便捷函数）
+  - 从integrations.py导入PDFToAIBridge类
+  - 定义__all__列表明确模块公共API
+  - 确保子需求可独立运行
+  - _需求：[FR-001], [FR-011]_
+  - _测试：[from pdf_extractor import extract_pdf_content可正常调用，from pdf_extractor import PDFToAIBridge可正常实例化]_
+
+- [x] 6. 实现【CLI接口cli.py】功能 - 命令行工具供Node.js调用
+  - 实现main()入口函数，使用argparse解析参数
+  - 支持 --file 参数从文件路径提取PDF文本
+  - 支持 --base64 参数从stdin读取base64数据提取
+  - 支持 --check-deps 参数检查依赖安装状态
+  - 支持 --use-ocr 和 --ocr-languages 参数控制OCR
+  - 支持 --max-pages 参数限制处理页数
+  - 实现 extract_from_file、extract_from_base64、extract_from_stdin 函数
+  - 修复 sys.path 导入问题（添加项目根目录到路径）
+  - 修复 --check-deps 与互斥参数组的冲突（移除重复定义）
+  - _需求：[FR-001], [FR-011]_
+  - _测试：[python cli.py --check-deps 返回依赖状态, python cli.py --file test.pdf 返回提取文本]_
+
+- [x] 7. 实现【Node.js服务pdfExtractorService.js】功能 - PDF提取Node.js封装
+  - 实现 PDFExtractorService 类，通过 child_process.exec 调用 Python CLI
+  - 实现 extractFromFile(filePath) 从文件提取PDF文本
+  - 实现 extractFromBase64(base64Data) 从base64数据提取（使用spawn+stdin）
+  - 实现 checkDependencies() 检查Python依赖状态
+  - 实现 extract(input) 自动判断输入类型（文件路径或base64）
+  - 实现 extractText(input) 仅返回提取的纯文本
+  - 实现 buildAIContent(extractResult, filename) 转换为AI分析输入格式
+  - 自动检测 python/python3 命令
+  - _需求：[FR-005], [FR-011]_
+  - _测试：[extractFromFile 返回status=success, buildAIContent 输出包含extractedText字段]_
+
+- [x] 8. 实现【Node.js集成】功能 - 邮件附件和文件上传的PDF文本提取集成
+  - 修复并重写 services/attachmentExtractor.js，恢复正确的类结构
+  - 在 extractAttachmentContent 中添加 PDF 文件检测和提取分支
+  - 新增 extractPDFContent(pdfPath) 方法调用 pdfExtractorService
+  - 在 routes/upload.js 的 /api/upload/analyze 路由中添加 PDF 自动提取
+  - 在 routes/attachment.js 中增强 buildAttachmentAnalysisPrompt 添加PDF分析指导
+  - 修复 pdf_extractor/__init__.py 中 format_extraction_result 调用参数不匹配的bug
+  - _需求：[FR-001], [FR-005]_
+  - _测试：[上传PDF文件返回pdfExtractedText字段, EML中PDF附件自动提取文本]_
+
+- [x] 9. 实现【图片附件OCR文本提取】功能 - EML中PDF→PNG附件的OCR文本提取支持
+  - 在 pdf_extractor/ocr_handler.py 中新增 extract_text_from_image(image_data, ocr_languages) 方法，从图片字节数据中提取OCR文本
+  - 在 pdf_extractor/ocr_handler.py 中新增 extract_text_from_image_file(file_path, ocr_languages) 方法，从图片文件路径提取OCR文本
+  - 在 pdf_extractor/cli.py 中新增 IMAGE_EXTENSIONS 常量和 _is_image_file() 辅助函数
+  - 在 pdf_extractor/cli.py 中修改 extract_from_file() 自动检测图片文件并走OCR路径
+  - 在 pdf_extractor/cli.py 中新增 extract_from_image_file() 和 extract_from_image_base64() 函数
+  - 在 pdf_extractor/cli.py 中新增 _convert_ocr_result_to_standard_format() 函数，确保OCR结果与PDF提取格式一致
+  - 在 pdf_extractor/cli.py 中新增 --image / -i CLI参数，支持显式指定图片OCR模式
+  - 在 pdf_extractor/__init__.py 中新增 extract_text_with_ocr 导出
+  - 在 services/pdfExtractorService.js 中新增 IMAGE_EXTENSIONS 集合和 _isImageFile() 辅助函数
+  - 在 services/pdfExtractorService.js 中新增 extractFromImageFile(filePath, options) 方法，调用Python CLI的 --image 参数
+  - 在 services/pdfExtractorService.js 的 extractFromFile() 中添加图片文件自动检测逻辑
+  - 在 services/attachmentExtractor.js 的 extractAttachmentContent() 中添加 .png/.jpg/.jpeg 等图片扩展名的OCR提取分支
+  - 在 services/attachmentExtractor.js 中新增 extractImageContent(imagePath) 方法，调用 pdfExtractorService.extractFromImageFile()
+  - 完整数据流：EML上传 → MIME解析 → 附件保存 → 图片文件检测 → OCR文本提取 → AI分析
+  - _需求：[图片附件OCR提取]_
+  - _测试：[EML中PNG附件自动OCR提取文本, extractFromImageFile返回status=success, extractFromFile自动检测图片文件]_
