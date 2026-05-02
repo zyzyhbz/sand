@@ -1,359 +1,142 @@
-# 邮件安全检测系统
+邮件安全智能检测系统
 
-基于MalwareJail沙盒和DeepSeek AI的智能邮件安全检测系统。
+基于多引擎检测与 DeepSeek AI 的邮件安全分析平台，支持自动化提取邮件附件、深度分析可疑内容，并生成可读的安全报告。
+✨ 已实现的核心功能
+1. 邮件解析与附件提取
 
-## 功能特性
+    ✅ EML 邮件解析：自动解析 MIME 结构，提取发件人、主题、正文及嵌入附件
 
-### 核心功能
-- ✅ **AI智能交互** - 集成DeepSeek Reasoner API，提供专业的安全分析和建议
-- ✅ **沙盒检测** - 使用MalwareJail开源沙盒检测恶意代码和URL
-- ✅ **EML邮件解析** - 自动解析EML邮件文件，提取附件并逐个分析
-- ✅ **PDF/PPT/图片文本提取** - 支持PDF、PPTX、图片等附件的OCR文本提取
-- ✅ **多语言OCR** - 集成Tesseract + EasyOCR，支持中英文图片文字识别
-- ✅ **智能报告生成** - 自动生成详细的安全检测报告，支持HTML/PDF下载
-- ✅ **实时对话** - 与AI助手实时交流分析结果
+    ✅ 递归附件提取：遍历多层 MIME 树，处理嵌套邮件、内嵌文件
 
-### 技术栈
-- **后端**: Node.js + Express
-- **前端**: 原生JavaScript + Bootstrap 5
-- **沙盒**: MalwareJail (JavaScript恶意代码分析)
-- **AI**: DeepSeek API (deepseek-reasoner模型)
-- **PDF提取**: Python (pdfplumber + PyPDF2 + pdf2image)
-- **OCR**: Tesseract OCR + EasyOCR (中英文识别)
-- **文件处理**: Multer
+    ✅ 压缩包解压：支持 zip、rar、7z 等格式，自动解压并递归扫描内部文件
 
----
+    ✅ 文件类型识别：基于 Magic bytes 识别真实文件类型，防扩展名伪装
 
-## 快速开始
+2. 深度附件内容提取
 
-### Windows系统（推荐）
+    ✅ PDF 文本提取（多策略降级）
 
-双击运行启动脚本：
-```
-start.bat
-```
-脚本会自动检查环境、安装依赖并启动服务器。
+        明码 PDF：pdfplumber + PyPDF2
 
-### 手动启动
+        扫描版 PDF：pdf2image + OCR（Tesseract / EasyOCR）
 
-```bash
-# 1. 安装项目依赖
+    ✅ PPT/PPTX 文本提取：python-pptx
+
+    ✅ 图片文字识别（OCR）：支持中英文，Tesseract + EasyOCR 双引擎自动切换
+
+    ✅ Office 文档元数据提取：.doc/.docx/.xls/.xlsx 基本信息提取
+
+3. 恶意代码沙盒分析（MalwareJail）
+
+    ✅ JavaScript 分析：检测恶意行为（eval、document.write、动态重定向等）
+
+    ✅ HTML 页面分析：提取隐藏 iframe、表单劫持、可疑脚本
+
+    ✅ VBS/VBE 等脚本扫描：行为模式识别
+
+    ✅ 沙盒行为报告：输出结构化日志，包含风险等级、可疑动作列表
+
+4. AI 智能研判与报告
+
+    ✅ DeepSeek Reasoner 集成：将邮件头、正文、附件文本、沙盒结果汇总为分析提示词
+
+    ✅ 自然语言风险评估：结合业务上下文判断是否为鱼叉攻击、BEC 诈骗等
+
+    ✅ 多维度风险评级：高/中/低/安全四级，附带判断依据
+
+    ✅ 一键生成报告：HTML/PDF 格式，包含证据链和修复建议
+
+    ✅ 交互式对话：支持与 AI 多轮交流，深入分析可疑点
+
+5. Web 界面
+
+    ✅ 文件拖拽上传，实时进度反馈
+
+    ✅ 报告在线预览与历史管理
+
+    ✅ 响应式界面（Bootstrap 5）
+
+🧱 技术栈
+层级	技术
+后端	Node.js + Express
+前端	Bootstrap 5 + 原生 JavaScript
+邮件解析	mailparser
+沙盒	MalwareJail
+AI 引擎	DeepSeek API (deepseek-reasoner)
+PDF/OCR	Python 3 (pdfplumber, PyPDF2, pdf2image, Tesseract, EasyOCR)
+文件处理	Multer, unzipper, node-7z
+报告生成	pdfkit, Handlebars
+📋 当前版本状态（重要）
+
+本项目处于 MVP 迭代阶段，以下功能已经在技术方案中完成调研与原型验证，但由于复杂度或环境要求，暂未整合到主检测链路中，将在后续版本实现。我会清楚的标注出来，以避免项目展示时产生误解。
+🔜 规划中 / 已调研但未上线功能
+1. 加密 PDF 的自动解密与恶意检测
+
+    技术方案已完成：识别 PDF /Encrypt 字典，提取 V/R/O/U 参数
+
+    已搭建本地原型：pdf2john + John the Ripper 弱口令爆破流程验证
+
+    未集成原因：实际场景中无口令提示的加密 PDF 检出率有限，优先做了明码 PDF 深度分析
+
+2. 全类型文件沙盒动态分析（exe / Office / PDF 脚本）
+
+    当前仅 MalwareJail 用于 JS/HTML/VBS 等脚本分析
+
+    已完成架构调研：技术选型为 Docker 隔离 + 行为监控 Agent，计划集成 CAPE 或 DRAKVUF
+
+    未上线原因：沙盒环境搭建复杂度大，稳定性调优需要较长周期
+
+3. 邮件认证深度验证（SPF/DKIM/DMARC）
+
+    当前已读取邮件头，但未做完整的 DNS 查询与签名验证
+
+    身份验证模块接口已预留，待后续集成
+
+4. URL 动态分析（无头浏览器渲染）
+
+    现有链接检测基于静态规则 + AI 辅助
+
+    已通过 Playwright 验证动态页面追踪与钓鱼特征提取的可行性
+
+    将在下一版本加入正式的动态分析能力
+
+我很欢迎对这些未完成特性进行交流，这里有详细的技术调研报告和原型代码，可以随时展开讨论。
+🚀 快速开始
+环境要求
+
+    Node.js ≥ 14
+
+    Python ≥ 3.8
+
+    （可选）Tesseract OCR 与 Poppler（用于图片/扫描件 OCR）
+
+一步启动（Windows）
+
+双击 start.bat 即可自动安装依赖并启动服务器。
+手动命令
+bash
+
+# 1. 安装 Node 依赖
 npm install
 
-# 2. 安装MalwareJail依赖
+# 2. 进入 MalwareJail 目录安装依赖
 cd malware-jail && npm install && cd ..
 
-# 3. 安装Python依赖（PDF提取/OCR功能）
+# 3. 安装 Python 依赖
 pip install pdfplumber PyPDF2 pdf2image pytesseract easyocr Pillow numpy
 
-# 4. 启动服务器
+# 4. 启动
 npm start
-```
 
-服务器将在 `http://localhost:3000` 启动。
+访问 http://localhost:3000
+🔒 安全提示
 
-### 环境要求
-- **Node.js**: 14.0+
-- **Python**: 3.8+（PDF提取/OCR功能需要）
-- **Tesseract OCR**: 安装并配置PATH（OCR功能需要，可选）
-- **Poppler**: 安装并配置PATH（PDF扫描件OCR需要，可选）
+    本系统仅用于授权邮件检测与安全研究
 
-### 配置环境变量
+    请勿上传敏感企业邮件至不受控环境
 
-编辑 `.env` 文件：
+    沙盒分析结果供参考，最终判断需人工复核
 
-```env
-# DeepSeek API配置
-DEEPSEEK_API_KEY=your_api_key_here
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-DEEPSEEK_MODEL=deepseek-reasoner
-
-# 服务器配置
-PORT=3000
-
-# MalwareJail配置
-MALWAREJAIL_PATH=./malware-jail
-MALWAREJAIL_OUTPUT_PATH=./malware-jail/output
-
-# 文件上传配置
-UPLOAD_DIR=./uploads
-MAX_FILE_SIZE=104857600
-```
-
----
-
-## 使用说明
-
-### 手动检测模式
-
-1. 打开浏览器访问 `http://localhost:3000`
-2. 拖放文件（JS、HTML、EML、PDF、图片等）到上传区域
-3. 点击"开始安全检测"
-4. 等待沙盒分析和AI处理
-5. 查看分析结果和AI建议
-6. 查看详细的安全检测报告
-
-### 支持的文件类型
-
-**深度分析（MalwareJail沙盒）**：
-- `.js` - JavaScript脚本
-- `.html`, `.htm` - HTML网页
-- `.vbs`, `.vbe` - Visual Basic脚本
-- `.wsc`, `.wsf` - Windows脚本组件
-
-**AI元数据分析 + 文本提取**：
-- `.eml` - 邮件文件（自动解析附件）
-- `.pdf` - PDF文档（文本提取 + OCR）
-- `.pptx` - PowerPoint演示文稿
-- `.jpg`, `.jpeg`, `.png` - 图片（OCR文字识别）
-- `.exe`, `.bat`, `.cmd` - 可执行文件
-- `.doc`, `.docx`, `.xls`, `.xlsx` - Office文档
-- `.zip`, `.rar` - 压缩文件
-- `.txt`, `.json` - 文本文件
-
-### EML邮件分析流程
-
-系统对EML邮件文件执行以下分析链路：
-
-```
-EML文件上传 → MIME解析 → 附件提取（PDF/PPT/图片/EXE等）
-    ↓                                    ↓
-邮件头分析（发件人/主题/日期）    逐个附件分析：
-    ↓                            - PDF → 文本提取(多策略降级)
-AI安全评估                       - PPT → 文本提取(Python-pptx)
-    ↓                            - 图片 → OCR识别(Tesseract/EasyOCR)
-生成综合报告                     - EXE → 沙盒行为分析
-```
-
-### AI对话功能
-
-在聊天界面中与AI助手交互：
-- 询问安全问题，如"这个文件的URL安全吗？"
-- 请求分析，如"帮我解释这个检测结果"
-- AI会结合沙盒分析和附件提取结果给出专业建议
-
-### 报告管理
-
-- 自动生成JSON/HTML格式报告
-- 支持导出HTML和PDF格式报告
-- 报告包含风险等级、检测统计、URL列表、可疑模式等
-- 支持查看历史报告
-
----
-
-## 风险等级说明
-
-| 等级 | 说明 | 建议操作 |
-|------|------|----------|
-| 🔴 高风险 | 检测到明显的恶意行为 | 立即删除，不要打开 |
-| 🟡 中风险 | 检测到可疑行为 | 谨慎处理，建议隔离检查 |
-| 🟢 低风险 | 检测到轻微可疑 | 二次扫描，保持警惕 |
-| 🔵 安全 | 未检测到威胁 | 常规检查即可 |
-
----
-
-## 系统架构
-
-```
-邮件安全检测系统
-├── server.js                    # 主服务器入口
-├── routes/                      # API路由
-│   ├── ai.js                    # AI对话和分析
-│   ├── sandbox.js               # 沙盒检测 + EML邮件分析
-│   ├── upload.js                # 文件上传
-│   ├── report.js                # 报告生成/查看/下载
-│   └── attachment.js            # 附件分析
-├── services/                    # 核心服务
-│   ├── aiService.js             # DeepSeek API集成
-│   ├── aiReportService.js       # AI报告生成服务
-│   ├── sandboxService.js        # MalwareJail集成
-│   ├── emailAnalyzer.js         # 邮件解析分析
-│   ├── attachmentExtractor.js   # 附件提取(PDF/PPT/图片OCR)
-│   ├── pdfExtractorService.js   # PDF提取Node.js封装
-│   ├── pdfService.js            # PDF报告生成(pdfkit)
-│   ├── pdfBrowserService.js     # PDF浏览器预览
-│   ├── formatNormalizer.js      # 格式标准化
-│   ├── decompiler.js            # 反编译服务
-│   └── quickmu.js               # QuickMu分析
-├── pdf_extractor/               # Python PDF/OCR提取模块
-│   ├── cli.py                   # CLI接口(Node.js调用)
-│   ├── core.py                  # PDFTextExtractor核心
-│   ├── ocr_handler.py           # OCR处理(Tesseract+EasyOCR)
-│   ├── utils.py                 # 工具函数
-│   └── integrations.py          # AI系统集成桥接
-├── public/                      # 前端文件
-│   ├── index.html               # 主页面
-│   └── js/app.js                # 前端逻辑
-├── uploads/                     # 上传文件目录
-├── reports/                     # 生成的报告目录
-└── malware-jail/                # MalwareJail沙盒
-```
-
----
-
-## API文档
-
-### AI相关
-
-#### 流式对话
-```http
-POST /api/ai/chat
-Content-Type: application/json
-
-{
-  "message": "用户消息",
-  "sessionId": "session-id",
-  "context": {}
-}
-```
-
-#### 生成安全报告
-```http
-POST /api/ai/report
-Content-Type: application/json
-
-{
-  "analysisData": {},
-  "fileInfo": {},
-  "aiReport": ""
-}
-```
-
-### 沙盒相关
-
-#### 文件分析
-```http
-POST /api/sandbox/analyze
-Content-Type: application/json
-
-{
-  "filePath": "path/to/file",
-  "fileType": "auto",
-  "generateReport": true
-}
-```
-
-#### URL分析
-```http
-POST /api/sandbox/analyze-url
-Content-Type: application/json
-
-{
-  "url": "https://example.com"
-}
-```
-
-### 文件上传
-
-#### 单文件上传
-```http
-POST /api/upload/single
-Content-Type: multipart/form-data
-
-file: <file>
-```
-
-#### 多文件上传
-```http
-POST /api/upload/multiple
-Content-Type: multipart/form-data
-
-files: <files>
-```
-
-### 报告相关
-
-#### 生成报告
-```http
-POST /api/report/generate
-Content-Type: application/json
-
-{
-  "analysisData": {},
-  "fileInfo": {}
-}
-```
-
-#### 获取报告列表
-```http
-GET /api/report/list
-```
-
-#### 获取单个报告
-```http
-GET /api/report/:reportId
-```
-
-#### 下载HTML报告
-```http
-GET /api/report/:id/download
-```
-
-#### 下载PDF报告
-```http
-GET /api/report/:id/download/pdf
-```
-
----
-
-## 安全特性
-
-1. **沙盒隔离** - MalwareJail在隔离环境中执行可疑代码
-2. **风险评级** - 基于多维度指标评估风险（high/medium/low/safe）
-3. **恶意行为检测** - 检测文件操作、网络请求、可疑代码模式
-4. **URL分析** - 识别和过滤恶意URL
-5. **AI增强** - 结合AI智能分析，提供更准确的安全评估
-6. **附件深度检测** - 自动提取PDF/PPT/图片中的文本进行安全分析
-
----
-
-## 常见问题
-
-### Q1: 服务器启动失败？
-- 确认Node.js已安装：`node -v`
-- 检查端口占用：`netstat -ano | findstr :3000`
-- 重新安装依赖：`npm install`
-
-### Q2: 沙盒分析失败？
-- 检查MalwareJail依赖：`cd malware-jail && npm install`
-- 使用推荐的文件格式（JS、HTML）
-- 查看服务器日志获取详细错误
-
-### Q3: AI响应失败？
-- 验证`.env`中的API密钥
-- 检查网络连接到api.deepseek.com
-- 确认API账户状态
-
-### Q4: PDF/OCR提取不工作？
-- 确认Python已安装：`python --version`
-- 安装Python依赖：`pip install pdfplumber PyPDF2 pdf2image pytesseract easyocr Pillow numpy`
-- Tesseract OCR需单独安装并加入PATH（可选，有EasyOCR兜底）
-- Poppler需安装并加入PATH（PDF扫描件OCR需要，可选）
-
-### Q5: 文件上传失败？
-- 检查文件大小（默认最大100MB）
-- 确认文件类型在支持列表中
-- 确保uploads目录有写权限
-
----
-
-## 设计文档
-
-特性设计文档位于 `.cospec/` 目录：
-
-- `.cospec/pdf-extractor/` - PDF/OCR文本提取模块设计
-- `.cospec/report-pdf-download/` - PDF报告下载功能设计
-
----
-
-## 许可证
+📄 许可证
 
 MIT License
-
-## 致谢
-
-- [MalwareJail](https://github.com/MalwareJail/MalwareJail) - JavaScript恶意代码分析沙盒
-- [DeepSeek](https://www.deepseek.com/) - AI推理模型
-- [Bootstrap](https://getbootstrap.com/) - UI框架
-- [EasyOCR](https://github.com/JaidedAI/EasyOCR) - 多语言OCR引擎
-- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) - OCR引擎
